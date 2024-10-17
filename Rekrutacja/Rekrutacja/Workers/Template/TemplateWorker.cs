@@ -25,7 +25,17 @@ namespace Rekrutacja.Workers.Template
             [Caption("B")]
             public int b { get; set; }
             [Caption("Operacja")]
-            public string operacja { get; set; }
+            //public string operacja { get; set; }
+            public enum figura
+            {
+                kwadrat,
+                prostokat,
+                kolo,
+                trojkat
+            }
+            [Caption("Figura")]
+            public figura WybranaFigura { get; set; } 
+            
             public TemplateWorkerParametry(Context context) : base(context)
             {
                 this.DataObliczen = Date.Today;
@@ -67,6 +77,67 @@ namespace Rekrutacja.Workers.Template
                 throw new InvalidOperationException("Nie znaleziono zaznaczonych pracowników.");
             }
 
+           // double wynik = wynikKalkulator();
+            double polePowierzchni = obliczPolePowierzchni();
+            
+            //Modyfikacja danych
+            //Aby modyfikować dane musimy mieć otwartą sesję, któa nie jest read only
+            using (Session nowaSesja = this.Cx.Login.CreateSession(false, false, "ModyfikacjaPracownika"))
+            {
+                //Otwieramy Transaction aby można było edytować obiekt z sesji
+                using (ITransaction trans = nowaSesja.Logout(true))
+                {
+                    //Pobieramy obiekt z Nowo utworzonej sesji
+                   // var pracownikZSesja = nowaSesja.Get(pracownik);
+                    //Features - są to pola rozszerzające obiekty w bazie danych, dzięki czemu nie jestesmy ogarniczeni to kolumn jakie zostały utworzone przez producenta
+                    //pracownikZSesja.Features["DataObliczen"] = this.Parametry.DataObliczen;
+                    //Zatwierdzamy zmiany wykonane w sesji
+                    
+                    foreach (var pracownik in pracownicy)
+                    {
+                        var pracownikZSesji = nowaSesja.Get(pracownik);
+
+                        // Zapisujemy wynik w polu "Wynik"
+                        //pracownikZSesji.Features["Wynik"] = wynik;
+                        pracownikZSesji.Features["Wynik"] = polePowierzchni;
+
+                        // Zapisujemy datę obliczeń w polu "DataObliczen"
+                        pracownikZSesji.Features["DataObliczen"] = this.Parametry.DataObliczen;
+                    }
+                    trans.CommitUI();
+                }
+                //Zapisujemy zmiany
+                nowaSesja.Save();
+            }
+        }
+
+        private double obliczPolePowierzchni()
+        {
+            double pole = 0;
+            switch (this.Parametry.WybranaFigura)
+            {
+                case TemplateWorkerParametry.figura.kolo:
+                    pole = (int)(Math.PI * this.Parametry.a * this.Parametry.a);
+                    break;
+                case TemplateWorkerParametry.figura.trojkat:
+                    pole = (int)(this.Parametry.a * this.Parametry.b)/2;
+                    break;
+                case TemplateWorkerParametry.figura.prostokat:
+                    pole = (int)(this.Parametry.a * this.Parametry.b);
+                    break;
+                case TemplateWorkerParametry.figura.kwadrat:
+                    pole = (int)this.Parametry.a * this.Parametry.a;
+                    break;
+                default:
+                    throw new InvalidOperationException("Nieprawidłowa operacja.");
+            }
+
+
+            return pole;
+        }
+
+        /*public double wynikKalkulator()
+        {
             double wynik = 0;
             switch (this.Parametry.operacja)
             {
@@ -87,34 +158,7 @@ namespace Rekrutacja.Workers.Template
                 default:
                     throw new InvalidOperationException("Nieprawidłowa operacja.");
             }
-            //Modyfikacja danych
-            //Aby modyfikować dane musimy mieć otwartą sesję, któa nie jest read only
-            using (Session nowaSesja = this.Cx.Login.CreateSession(false, false, "ModyfikacjaPracownika"))
-            {
-                //Otwieramy Transaction aby można było edytować obiekt z sesji
-                using (ITransaction trans = nowaSesja.Logout(true))
-                {
-                    //Pobieramy obiekt z Nowo utworzonej sesji
-                   // var pracownikZSesja = nowaSesja.Get(pracownik);
-                    //Features - są to pola rozszerzające obiekty w bazie danych, dzięki czemu nie jestesmy ogarniczeni to kolumn jakie zostały utworzone przez producenta
-                    //pracownikZSesja.Features["DataObliczen"] = this.Parametry.DataObliczen;
-                    //Zatwierdzamy zmiany wykonane w sesji
-                    
-                    foreach (var pracownik in pracownicy)
-                    {
-                        var pracownikZSesji = nowaSesja.Get(pracownik);
-
-                        // Zapisujemy wynik w polu "Wynik"
-                        pracownikZSesji.Features["Wynik"] = wynik;
-
-                        // Zapisujemy datę obliczeń w polu "DataObliczen"
-                        pracownikZSesji.Features["DataObliczen"] = this.Parametry.DataObliczen;
-                    }
-                    trans.CommitUI();
-                }
-                //Zapisujemy zmiany
-                nowaSesja.Save();
-            }
-        }
+            return wynik;
+        }*/
     }
 }
