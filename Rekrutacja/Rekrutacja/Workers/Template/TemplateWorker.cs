@@ -21,9 +21,9 @@ namespace Rekrutacja.Workers.Template
             [Caption("Data obliczeń")]
             public Date DataObliczen { get; set; }
             [Caption("A")]
-            public int a { get; set; }
+            public string a { get; set; }
             [Caption("B")]
-            public int b { get; set; }
+            public string b { get; set; }
             [Caption("Operacja")]
             //public string operacja { get; set; }
             public enum figura
@@ -60,25 +60,17 @@ namespace Rekrutacja.Workers.Template
             //Włączenie Debug, aby działał należy wygenerować DLL w trybie DEBUG
             DebuggerSession.MarkLineAsBreakPoint();
             //Pobieranie danych z Contextu
-            /*Pracownik pracownicy = null;
-            if (this.Cx.Contains(typeof(Pracownik)))
-            {
-                pracownicy = (Pracownik)this.Cx[typeof(Pracownik)];
-            }*/
             var pracownicy = (Pracownik[])this.Cx[typeof(Pracownik[])] as IEnumerable<Pracownik>;
-           /* if (!this.Cx.Contains(typeof(Pracownik)))
-            {
-                throw new InvalidOperationException("Brak zaznaczonych pracowników.");
-            }*/
-            
-
+           
             if (pracownicy == null || !pracownicy.Any())
             {
                 throw new InvalidOperationException("Nie znaleziono zaznaczonych pracowników.");
             }
 
-           // double wynik = wynikKalkulator();
-            double polePowierzchni = obliczPolePowierzchni();
+            // double wynik = wynikKalkulator();
+            int a = stringToInt(this.Parametry.a);
+            int b = stringToInt(this.Parametry.b);
+            double polePowierzchni = obliczPolePowierzchni(a,b);
             
             //Modyfikacja danych
             //Aby modyfikować dane musimy mieć otwartą sesję, któa nie jest read only
@@ -88,22 +80,21 @@ namespace Rekrutacja.Workers.Template
                 using (ITransaction trans = nowaSesja.Logout(true))
                 {
                     //Pobieramy obiekt z Nowo utworzonej sesji
-                   // var pracownikZSesja = nowaSesja.Get(pracownik);
+
                     //Features - są to pola rozszerzające obiekty w bazie danych, dzięki czemu nie jestesmy ogarniczeni to kolumn jakie zostały utworzone przez producenta
-                    //pracownikZSesja.Features["DataObliczen"] = this.Parametry.DataObliczen;
-                    //Zatwierdzamy zmiany wykonane w sesji
-                    
+                  
                     foreach (var pracownik in pracownicy)
                     {
                         var pracownikZSesji = nowaSesja.Get(pracownik);
 
-                        // Zapisujemy wynik w polu "Wynik"
+                        //Zapisujemy wynik w polu "Wynik"
                         //pracownikZSesji.Features["Wynik"] = wynik;
                         pracownikZSesji.Features["Wynik"] = polePowierzchni;
 
                         // Zapisujemy datę obliczeń w polu "DataObliczen"
                         pracownikZSesji.Features["DataObliczen"] = this.Parametry.DataObliczen;
                     }
+                    //Zatwierdzamy zmiany wykonane w sesji
                     trans.CommitUI();
                 }
                 //Zapisujemy zmiany
@@ -111,22 +102,22 @@ namespace Rekrutacja.Workers.Template
             }
         }
 
-        private double obliczPolePowierzchni()
+        private double obliczPolePowierzchni(int a, int b)
         {
             double pole = 0;
             switch (this.Parametry.WybranaFigura)
             {
                 case TemplateWorkerParametry.figura.kolo:
-                    pole = (int)(Math.PI * this.Parametry.a * this.Parametry.a);
+                    pole = (int)(Math.PI * a * a);
                     break;
                 case TemplateWorkerParametry.figura.trojkat:
-                    pole = (int)(this.Parametry.a * this.Parametry.b)/2;
+                    pole = (a * b)/2;
                     break;
                 case TemplateWorkerParametry.figura.prostokat:
-                    pole = (int)(this.Parametry.a * this.Parametry.b);
+                    pole = a * b;
                     break;
                 case TemplateWorkerParametry.figura.kwadrat:
-                    pole = (int)this.Parametry.a * this.Parametry.a;
+                    pole = a * a;
                     break;
                 default:
                     throw new InvalidOperationException("Nieprawidłowa operacja.");
@@ -160,5 +151,44 @@ namespace Rekrutacja.Workers.Template
             }
             return wynik;
         }*/
+
+        public int stringToInt(string value)
+        {
+            if (string.IsNullOrEmpty(value))
+                throw new ArgumentException("String nie może być pusty");
+
+            bool isNegative = false;
+            int result = 0;
+
+            int startIndex = 0;
+            if (value[0] == '-')
+            {
+                isNegative = true;
+                startIndex = 1; 
+            }
+
+            for (int i = startIndex; i < value.Length; i++)
+            {
+                char currentChar = value[i];
+
+                if (currentChar < '0' || currentChar > '9')
+                    throw new FormatException($"Niepoprawny znak '{currentChar}'.");
+
+                
+                int digitValue = currentChar - '0'; 
+
+         
+                result = result * 10 + digitValue;
+            }
+
+            if (isNegative)
+            {
+                return -result;
+            }
+            else
+            {
+                return result;
+            }
+        }
     }
 }
